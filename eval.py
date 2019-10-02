@@ -11,6 +11,8 @@ from typing import Tuple
 from icdar import restore_rectangle
 
 logging.getLogger('tensorflow').setLevel(logging.CRITICAL)
+tf_logger = logging.getLogger('tensorflow')
+tf_logger.disabled = True
 
 
 class ImageProcessor:
@@ -149,7 +151,9 @@ class ImageProcessor:
             print('{} : net {:.0f}ms, restore {:.0f}ms, nms {:.0f}ms'.format(
                 img, timer['net'] * 1000, timer['restore'] * 1000, timer['nms'] * 1000))
 
+            scores = None
             if boxes is not None:
+                scores = boxes[:, 8].reshape(-1)
                 boxes = boxes[:, :8].reshape((-1, 4, 2))
                 boxes[:, :, 0] /= ratio_w
                 boxes[:, :, 1] /= ratio_h
@@ -159,12 +163,12 @@ class ImageProcessor:
 
             # save to file
             if boxes is not None:
-                for box in boxes:
+                for box, score in zip(boxes, scores):
                     # to avoid submitting errors
                     box = self._sort_poly(box.astype(np.int32))
                     if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3] - box[0]) < 5:
                         continue
-                    print(box)
+                    print(box, score)
                     cv2.polylines(im[:, :, ::-1], [box.astype(np.int32).reshape((-1, 1, 2))], True,
                                   color=(0, 255, 0), thickness=2)
 
